@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Max Artesanatos - Gestão de Despesas & Relatórios</title>
+ 
+  <!-- FontAwesome e Tailwind CSS via CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js para gráficos -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f3f4f6;
+    }
+    .fade-in {
+      animation: fadeIn 0.3s ease-in-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 3px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #a8a8a8;
+    }
+    .tab-active {
+      border-bottom: 3px solid #92400e;
+      color: #92400e;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col">
+
+  <!-- CABEÇALHO -->
+  <header class="bg-amber-900 text-white shadow-lg sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="bg-amber-100 text-amber-900 p-2 rounded-lg font-bold text-xl flex items-center justify-center w-10 h-10 shadow-inner">
+          <i class="fa-solid fa-boxes-packing"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg leading-tight">Max Artesanatos</h1>
+          <p class="text-xs text-amber-200">Módulo de Gestão & Relatórios de Despesas</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2">
+        <button id="btnSync" onclick="carregarTodasDespesas()" class="bg-amber-800 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-2 shadow-sm">
+          <i class="fa-solid fa-rotate" id="iconSync"></i>
+          <span class="hidden sm:inline">Atualizar</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- MENUS DE ABAS -->
+    <div class="bg-amber-950 px-4 border-t border-amber-800/50">
+      <div class="max-w-7xl mx-auto flex space-x-6 text-sm">
+        <button id="tabBtnDespesas" onclick="alternarAba('despesas')" class="py-2.5 px-1 font-medium text-amber-100 hover:text-white transition flex items-center gap-2 tab-active">
+          <i class="fa-solid fa-receipt"></i>
+          <span>Lançamento & Tabela</span>
+        </button>
+        <button id="tabBtnGraficos" onclick="alternarAba('graficos')" class="py-2.5 px-1 font-medium text-amber-200 hover:text-white transition flex items-center gap-2">
+          <i class="fa-solid fa-chart-line"></i>
+          <span>Gráficos & Categorias</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- CONTEÚDO PRINCIPAL -->
+  <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
+
+    <!-- ABA 1: GESTÃO E LANÇAMENTO DE DESPESAS -->
+    <div id="abaDespesas" class="flex flex-col gap-6 fade-in">
+     
+      <!-- DASHBOARD RÁPIDO -->
+      <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Total Geral de Despesas</p>
+            <h3 class="text-2xl font-bold text-slate-900" id="dashTotalGeral">R$ 0,00</h3>
+            <p class="text-xs text-slate-400 mt-1" id="dashTotalQtd">0 registros encontrados</p>
+          </div>
+          <div class="bg-red-50 text-red-600 p-3 rounded-xl text-xl">
+            <i class="fa-solid fa-receipt"></i>
+          </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Total Mês Atual</p>
+            <h3 class="text-2xl font-bold text-amber-900" id="dashTotalMes">R$ 0,00</h3>
+            <p class="text-xs text-slate-400 mt-1" id="dashMesNome">Competência Atual</p>
+          </div>
+          <div class="bg-amber-50 text-amber-700 p-3 rounded-xl text-xl">
+            <i class="fa-solid fa-calendar-days"></i>
+          </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Maior Categoria</p>
+            <h3 class="text-xl font-bold text-slate-800 truncate max-w-[180px]" id="dashMaiorCategoria">N/A</h3>
+            <p class="text-xs text-slate-400 mt-1" id="dashMaiorCategoriaValor">R$ 0,00</p>
+          </div>
+          <div class="bg-slate-100 text-slate-700 p-3 rounded-xl text-xl">
+            <i class="fa-solid fa-chart-pie"></i>
+          </div>
+        </div>
+      </section>
+
+      <!-- FORMULÁRIO E TABELA -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+       
+        <!-- FORMULÁRIO (4 Colunas) -->
+        <section class="lg:col-span-4 bg-white p-5 rounded-xl border border-slate-200 shadow-sm sticky top-20">
+          <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
+            <h2 class="font-bold text-slate-800 text-base flex items-center gap-2" id="formTitle">
+              <i class="fa-solid fa-plus-circle text-amber-700"></i>
+              Nova Despesa
+            </h2>
+            <button id="btnCancelEdit" onclick="limparFormulario()" class="hidden text-xs text-slate-500 hover:text-red-600 font-medium">
+              <i class="fa-solid fa-xmark mr-1"></i>Cancelar
+            </button>
+          </div>
+
+          <form id="formDespesa" onsubmit="salvarDespesa(event)" class="space-y-4">
+            <input type="hidden" id="despesaId" value="">
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1" for="descricao">
+                Descrição / Item <span class="text-red-500">*</span>
+              </label>
+              <input type="text" id="descricao" required placeholder="Ex: Compra de Madeira Pinus" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600 focus:border-transparent transition">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1" for="valor">
+                  Valor (R$) <span class="text-red-500">*</span>
+                </label>
+                <input type="number" step="0.01" min="0.01" id="valor" required placeholder="0,00" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600 focus:border-transparent transition">
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1" for="data">
+                  Data <span class="text-red-500">*</span>
+                </label>
+                <input type="date" id="data" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600 focus:border-transparent transition">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1" for="categoria">
+                  Categoria <span class="text-red-500">*</span>
+                </label>
+                <select id="categoria" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600 focus:border-transparent transition bg-white">
+                  <option value="">Selecione...</option>
+                  <option value="Materia Prima">Matéria Prima</option>
+                  <option value="Ferramentas">Ferramentas</option>
+                  <option value="Embalagens">Embalagens</option>
+                  <option value="Equipamentos">Equipamentos</option>
+                  <option value="Manutenção">Manutenção</option>
+                  <option value="Transporte / Frete">Transporte / Frete</option>
+                  <option value="Luz / Energia">Luz / Energia</option>
+                  <option value="Marketing">Marketing</option>
+                  <option value="Outros">Outros</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1" for="pagamento">
+                  Pagamento
+                </label>
+                <select id="pagamento" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600 focus:border-transparent transition bg-white">
+                  <option value="Pix">Pix</option>
+                  <option value="Cartão de Crédito">Cartão de Crédito</option>
+                  <option value="Cartão de Débito">Cartão de Débito</option>
+                  <option value="Dinheiro">Dinheiro</option>
+                  <option value="Boleto">Boleto</option>
+                  <option value="Transferência">Transferência</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1" for="observacao">
+                Observações / Detalhes
+              </label>
+              <textarea id="observacao" rows="2" placeholder="Informações adicionais, fornecedor, etc." class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600 focus:border-transparent transition resize-none"></textarea>
+            </div>
+
+            <div class="pt-2 flex gap-2">
+              <button type="submit" id="btnSalvar" class="flex-1 bg-amber-800 hover:bg-amber-900 text-white font-medium py-2.5 px-4 rounded-lg shadow transition flex items-center justify-center space-x-2 text-sm">
+                <i class="fa-solid fa-floppy-disk"></i>
+                <span id="btnSalvarTexto">Salvar Despesa</span>
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <!-- TABELA (8 Colunas) -->
+        <section class="lg:col-span-8 bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col min-h-[500px]">
+         
+          <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pb-4 border-b border-slate-100">
+            <div class="relative w-full sm:w-64">
+              <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-sm"></i>
+              <input type="text" id="filtroBusca" oninput="filtrarTabela()" placeholder="Buscar despesa..." class="w-full pl-9 pr-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600 focus:border-transparent">
+            </div>
+
+            <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <select id="filtroCategoria" onchange="filtrarTabela()" class="text-xs py-1.5 px-2 border border-slate-300 rounded-lg bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-600">
+                <option value="">Todas as Categorias</option>
+                <option value="Materia Prima">Matéria Prima</option>
+                <option value="Ferramentas">Ferramentas</option>
+                <option value="Embalagens">Embalagens</option>
+                <option value="Equipamentos">Equipamentos</option>
+                <option value="Manutenção">Manutenção</option>
+                <option value="Transporte / Frete">Transporte / Frete</option>
+                <option value="Luz / Energia">Luz / Energia</option>
+                <option value="Marketing">Marketing</option>
+                <option value="Outros">Outros</option>
+              </select>
+
+              <select id="filtroOrdenacao" onchange="filtrarTabela()" class="text-xs py-1.5 px-2 border border-slate-300 rounded-lg bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-600">
+                <option value="data-desc">Mais Recentes</option>
+                <option value="data-asc">Mais Antigas</option>
+                <option value="valor-desc">Maior Valor</option>
+                <option value="valor-asc">Menor Valor</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto flex-grow custom-scrollbar mt-3">
+            <table class="w-full text-left border-collapse text-sm">
+              <thead>
+                <tr class="border-b border-slate-200 text-xs text-slate-500 uppercase tracking-wider bg-slate-50">
+                  <th class="py-3 px-3">Data</th>
+                  <th class="py-3 px-3">Descrição</th>
+                  <th class="py-3 px-3">Categoria</th>
+                  <th class="py-3 px-3 text-right">Valor</th>
+                  <th class="py-3 px-3 text-center">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tabelaCorpo" class="divide-y divide-slate-100">
+              </tbody>
+            </table>
+
+            <div id="loadingState" class="py-12 text-center text-slate-400">
+              <i class="fa-solid fa-spinner fa-spin text-3xl mb-2 text-amber-700"></i>
+              <p class="text-sm">Carregando despesas...</p>
+            </div>
+
+            <div id="emptyState" class="hidden py-12 text-center text-slate-400">
+              <i class="fa-solid fa-folder-open text-3xl mb-2"></i>
+              <p class="text-sm">Nenhuma despesa encontrada.</p>
+            </div>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+            <span id="lblExibindoCount">Exibindo 0 registros</span>
+            <span class="font-semibold text-slate-700" id="lblSomaExibida">Soma: R$ 0,00</span>
+          </div>
+        </section>
+
+      </div>
+    </div>
+
+    <!-- ABA 2: GRÁFICOS & ANÁLISE POR CATEGORIA -->
+    <div id="abaGraficos" class="hidden flex-col gap-6 fade-in">
+     
+      <!-- BARRA DE FILTRO POR PERÍODO -->
+      <section class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-filter text-amber-800"></i>
+          <span class="font-bold text-slate-800 text-sm">Filtrar Gráficos por Período:</span>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          <div class="flex items-center gap-1 text-xs text-slate-600">
+            <label for="graficoDataInicio">Início:</label>
+            <input type="date" id="graficoDataInicio" onchange="atualizarGraficosERelatorios()" class="px-2 py-1 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-amber-600 focus:outline-none">
+          </div>
+
+          <div class="flex items-center gap-1 text-xs text-slate-600">
+            <label for="graficoDataFim">Fim:</label>
+            <input type="date" id="graficoDataFim" onchange="atualizarGraficosERelatorios()" class="px-2 py-1 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-amber-600 focus:outline-none">
+          </div>
+
+          <div class="flex items-center gap-1">
+            <button onclick="setFiltroRapido('esteMes')" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition">Este Mês</button>
+            <button onclick="setFiltroRapido('mesAnterior')" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition">Mês Anterior</button>
+            <button onclick="setFiltroRapido('anoAtual')" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition">Este Ano</button>
+            <button onclick="setFiltroRapido('tudo')" class="px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-medium rounded-lg transition">Tudo</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- CARDS DE TOTAL DO PERÍODO -->
+      <section class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-amber-900 text-white p-5 rounded-xl shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs uppercase tracking-wider text-amber-200 mb-1">Total do Período Filtrado</p>
+            <h3 class="text-3xl font-bold" id="graficoTotalFiltrado">R$ 0,00</h3>
+            <p class="text-xs text-amber-200 mt-1" id="graficoQtdFiltrado">0 compras no período</p>
+          </div>
+          <div class="bg-amber-800 p-3 rounded-xl text-2xl text-amber-200">
+            <i class="fa-solid fa-calculator"></i>
+          </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Categoria Principal do Período</p>
+            <h3 class="text-2xl font-bold text-amber-900" id="graficoCatLider">N/A</h3>
+            <p class="text-xs text-slate-400 mt-1" id="graficoCatLiderValor">R$ 0,00</p>
+          </div>
+          <div class="bg-amber-50 text-amber-800 p-3 rounded-xl text-2xl">
+            <i class="fa-solid fa-crown"></i>
+          </div>
+        </div>
+      </section>
+
+      <!-- ÁREA DOS GRÁFICOS (Evolução Mensal & Distribuição por Categoria) -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Evolução Mensal (7 Colunas) -->
+        <div class="lg:col-span-7 bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+          <h3 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-chart-column text-amber-800"></i>
+            Evolução de Gastos Por Mês
+          </h3>
+          <div class="relative flex-grow min-h-[250px] w-full">
+            <canvas id="chartEvolucaoMensal"></canvas>
+          </div>
+        </div>
+
+        <!-- Distribuição por Categoria (5 Colunas) -->
+        <div class="lg:col-span-5 bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+          <h3 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-chart-pie text-amber-800"></i>
+            Gastos Por Categoria
+          </h3>
+          <div class="relative flex-grow min-h-[250px] w-full flex items-center justify-center">
+            <canvas id="chartCategorias"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- GRADE / TABELA DE RESUMO DE CATEGORIAS + ITENS DETALHADOS -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+       
+        <!-- RESUMO EM GRADE POR CATEGORIA (5 Colunas) -->
+        <div class="lg:col-span-5 bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <i class="fa-solid fa-list-check text-amber-800"></i>
+              Resumo por Categoria
+            </h3>
+            <span class="text-xs text-slate-400">Clique para filtrar os itens</span>
+          </div>
+
+          <div id="gradeCategorias" class="space-y-2 max-h-[420px] overflow-y-auto custom-scrollbar pr-1">
+            <!-- Gerado Dinamicamente em JS -->
+          </div>
+        </div>
+
+        <!-- LISTA DE ITENS COMPRADOS DA CATEGORIA SELECIONADA (7 Colunas) -->
+        <div class="lg:col-span-7 bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col min-h-[400px]">
+          <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+            <div>
+              <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2" id="lblTituloItensCategoria">
+                <i class="fa-solid fa-cart-shopping text-amber-800"></i>
+                Itens Comprados (Todas as Categorias)
+              </h3>
+              <p class="text-xs text-slate-400 mt-0.5" id="lblSubtituloItensCategoria">Exibindo compras do período selecionado</p>
+            </div>
+
+            <button id="btnLimparFiltroCat" onclick="selecionarCategoriaGrade('')" class="hidden text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-lg font-medium transition">
+              Mostrar Todas
+            </button>
+          </div>
+
+          <div class="overflow-x-auto flex-grow custom-scrollbar">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="border-b border-slate-200 text-slate-500 uppercase tracking-wider bg-slate-50">
+                  <th class="py-2.5 px-2">Data</th>
+                  <th class="py-2.5 px-2">Item / Descrição</th>
+                  <th class="py-2.5 px-2">Pagamento</th>
+                  <th class="py-2.5 px-2 text-right">Valor</th>
+                </tr>
+              </thead>
+              <tbody id="tabelaItensCategoria" class="divide-y divide-slate-100">
+                <!-- Preenchido via JS -->
+              </tbody>
+            </table>
+          </div>
+
+          <div class="mt-3 pt-2 border-t border-slate-100 text-right text-xs font-bold text-slate-800" id="lblTotalItensCategoria">
+            Total Categoria: R$ 0,00
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- RODAPÉ -->
+  <footer class="bg-white border-t border-slate-200 py-4 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
+      Max Artesanatos &copy; 2026 - Módulo de Gestão & Relatórios de Despesas
+    </div>
+  </footer>
+
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- SCRIPT JS -->
+  <script>
+    // =========================================================================
+    // COLE AQUI A URL DO SEU GOOGLE APPS SCRIPT:
+    // =========================================================================
+    const API_URL = 'https://script.google.com/macros/s/AKfycbz9PnQHFFsbRiAkApSFlSaVvozPtvluUAkeBnL5R77-uOjBj2PksepgCI6_eXWMEfVt/exec';
+    // =========================================================================
+
+    // ESTADO GLOBAL
+    let listaDespesas = [];
+    let despesasFiltradas = [];
+    let categoriaSelecionadaGrade = '';
+
+    // INSTÂNCIAS DOS GRÁFICOS
+    let chartEvolucaoObj = null;
+    let chartCategoriasObj = null;
+
+    // INICIALIZAÇÃO
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('data').value = new Date().toISOString().split('T')[0];
+     
+      // Filtro inicial de data no relatório: Mês Atual
+      setFiltroRapido('esteMes', false);
+
+      carregarTodasDespesas();
+    });
+
+    // TROCA DE ABAS
+    function alternarAba(aba) {
+      const tabDespesas = document.getElementById('abaDespesas');
+      const tabGraficos = document.getElementById('abaGraficos');
+      const btnDespesas = document.getElementById('tabBtnDespesas');
+      const btnGraficos = document.getElementById('tabBtnGraficos');
+
+      if (aba === 'despesas') {
+        tabDespesas.classList.remove('hidden');
+        tabGraficos.classList.add('hidden');
+        btnDespesas.classList.add('tab-active');
+        btnGraficos.classList.remove('tab-active');
+      } else {
+        tabDespesas.classList.add('hidden');
+        tabGraficos.classList.remove('hidden');
+        btnDespesas.classList.remove('tab-active');
+        btnGraficos.classList.add('tab-active');
+       
+        atualizarGraficosERelatorios();
+      }
+    }
+
+    // 1. CARREGAR TODAS AS DESPESAS DA PLANILHA (GET)
+    async function carregarTodasDespesas() {
+      exibirLoading(true);
+      const iconSync = document.getElementById('iconSync');
+      if (iconSync) iconSync.classList.add('fa-spin');
+
+      try {
+        const url = `${API_URL}?action=obterDespesas`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.status === 'success' || Array.isArray(data.despesas)) {
+          listaDespesas = data.despesas || data.data || [];
+        } else if (Array.isArray(data)) {
+          listaDespesas = data;
+        } else {
+          throw new Error(data.message || 'Erro ao obter dados.');
+        }
+
+        filtrarTabela();
+        atualizarDashboard();
+        atualizarGraficosERelatorios();
+        exibirToast('Dados sincronizados com a planilha!', 'success');
+
+      } catch (error) {
+        console.error('Erro:', error);
+        exibirToast('Erro ao se conectar com a API. Verifique a URL.', 'error');
+      } finally {
+        exibirLoading(false);
+        if (iconSync) iconSync.classList.remove('fa-spin');
+      }
+    }
+
+    // 2. SALVAR DESPESA (POST)
+    async function salvarDespesa(event) {
+      event.preventDefault();
+
+      const btnSalvar = document.getElementById('btnSalvar');
+      const btnSalvarTexto = document.getElementById('btnSalvarTexto');
+      const id = document.getElementById('despesaId').value;
+
+      const payload = {
+        action: id ? 'atualizarDespesa' : 'cadastrarDespesa',
+        id: id || Date.now().toString(),
+        descricao: document.getElementById('descricao').value.trim(),
+        valor: parseFloat(document.getElementById('valor').value),
+        data: document.getElementById('data').value,
+        categoria: document.getElementById('categoria').value,
+        pagamento: document.getElementById('pagamento').value,
+        observacao: document.getElementById('observacao').value.trim()
+      };
+
+      btnSalvar.disabled = true;
+      btnSalvarTexto.textContent = 'Gravando...';
+
+      try {
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams(payload)
+        });
+
+        const resData = await response.json();
+
+        if (resData.status === 'success' || response.ok) {
+          exibirToast(id ? 'Despesa atualizada!' : 'Despesa registrada!', 'success');
+          limparFormulario();
+          await carregarTodasDespesas();
+        } else {
+          throw new Error(resData.message || 'Falha ao gravar.');
+        }
+      } catch (err) {
+        console.error(err);
+        exibirToast('Erro ao conectar. Alteração gravada localmente.', 'warning');
+        if (id) {
+          const idx = listaDespesas.findIndex(d => String(d.id) === String(id));
+          if (idx !== -1) listaDespesas[idx] = payload;
+        } else {
+          listaDespesas.unshift(payload);
+        }
+        limparFormulario();
+        filtrarTabela();
+        atualizarDashboard();
+        atualizarGraficosERelatorios();
+      } finally {
+        btnSalvar.disabled = false;
+        btnSalvarTexto.textContent = id ? 'Atualizar Despesa' : 'Salvar Despesa';
+      }
+    }
+
+    // 3. EXCLUIR DESPESA (POST)
+    async function excluirDespesa(id) {
+      if (!confirm('Deseja realmente apagar esta despesa da planilha?')) return;
+
+      try {
+        const payload = { action: 'excluirDespesa', id: id };
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams(payload)
+        });
+
+        const resData = await response.json();
+
+        if (resData.status === 'success' || response.ok) {
+          exibirToast('Despesa apagada com sucesso!', 'success');
+          carregarTodasDespesas();
+        } else {
+          throw new Error(resData.message);
+        }
+      } catch (error) {
+        console.error(error);
+        exibirToast('Apagando localmente...', 'warning');
+        listaDespesas = listaDespesas.filter(d => String(d.id) !== String(id));
+        filtrarTabela();
+        atualizarDashboard();
+        atualizarGraficosERelatorios();
+      }
+    }
+
+    // EDITAR / LIMPAR FORM
+    function editarDespesa(id) {
+      const item = listaDespesas.find(d => String(d.id) === String(id));
+      if (!item) return;
+
+      document.getElementById('despesaId').value = item.id;
+      document.getElementById('descricao').value = item.descricao || '';
+      document.getElementById('valor').value = item.valor || '';
+      document.getElementById('data').value = item.data ? item.data.split('T')[0] : '';
+      document.getElementById('categoria').value = item.categoria || '';
+      document.getElementById('pagamento').value = item.pagamento || 'Pix';
+      document.getElementById('observacao').value = item.observacao || '';
+
+      document.getElementById('formTitle').innerHTML = '<i class="fa-solid fa-pen-to-square text-amber-700"></i> Editar Despesa';
+      document.getElementById('btnSalvarTexto').textContent = 'Atualizar Despesa';
+      document.getElementById('btnCancelEdit').classList.remove('hidden');
+
+      alternarAba('despesas');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function limparFormulario() {
+      document.getElementById('formDespesa').reset();
+      document.getElementById('despesaId').value = '';
+      document.getElementById('data').value = new Date().toISOString().split('T')[0];
+      document.getElementById('formTitle').innerHTML = '<i class="fa-solid fa-plus-circle text-amber-700"></i> Nova Despesa';
+      document.getElementById('btnSalvarTexto').textContent = 'Salvar Despesa';
+      document.getElementById('btnCancelEdit').classList.add('hidden');
+    }
+
+    // FILTRAR TABELA PRINCIPAL
+    function filtrarTabela() {
+      const busca = document.getElementById('filtroBusca').value.toLowerCase();
+      const cat = document.getElementById('filtroCategoria').value;
+      const ordem = document.getElementById('filtroOrdenacao').value;
+
+      despesasFiltradas = listaDespesas.filter(item => {
+        const atendeBusca = !busca ||
+          (item.descricao && item.descricao.toLowerCase().includes(busca)) ||
+          (item.observacao && item.observacao.toLowerCase().includes(busca));
+        const atendeCat = !cat || item.categoria === cat;
+        return atendeBusca && atendeCat;
+      });
+
+      despesasFiltradas.sort((a, b) => {
+        if (ordem === 'data-desc') return new Date(b.data) - new Date(a.data);
+        if (ordem === 'data-asc') return new Date(a.data) - new Date(b.data);
+        if (ordem === 'valor-desc') return Number(b.valor) - Number(a.valor);
+        if (ordem === 'valor-asc') return Number(a.valor) - Number(b.valor);
+        return 0;
+      });
+
+      renderizarTabela(despesasFiltradas);
+    }
+
+    function renderizarTabela(itens) {
+      const tbody = document.getElementById('tabelaCorpo');
+      const emptyState = document.getElementById('emptyState');
+      tbody.innerHTML = '';
+
+      if (itens.length === 0) {
+        emptyState.classList.remove('hidden');
+        document.getElementById('lblExibindoCount').textContent = 'Exibindo 0 registros';
+        document.getElementById('lblSomaExibida').textContent = 'Soma: R$ 0,00';
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      let somaValores = 0;
+
+      itens.forEach(item => {
+        const val = Number(item.valor) || 0;
+        somaValores += val;
+
+        let dataFormatada = item.data || '-';
+        if (dataFormatada.includes('T')) dataFormatada = dataFormatada.split('T')[0];
+        if (dataFormatada.includes('-')) {
+          const [ano, mes, dia] = dataFormatada.split('-');
+          dataFormatada = `${dia}/${mes}/${ano}`;
+        }
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50 transition fade-in';
+        tr.innerHTML = `
+          <td class="py-3 px-3 text-slate-600 whitespace-nowrap text-xs font-medium">${dataFormatada}</td>
+          <td class="py-3 px-3 font-medium text-slate-800">
+            <div>${escapeHtml(item.descricao || '')}</div>
+            ${item.observacao ? `<div class="text-xs text-slate-400 font-normal truncate max-w-xs">${escapeHtml(item.observacao)}</div>` : ''}
+          </td>
+          <td class="py-3 px-3">
+            <span class="inline-block px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+              ${escapeHtml(item.categoria || 'Geral')}
+            </span>
+          </td>
+          <td class="py-3 px-3 text-right font-bold text-slate-900 whitespace-nowrap">
+            ${formatarMoeda(val)}
+          </td>
+          <td class="py-3 px-3 text-center whitespace-nowrap">
+            <button onclick="editarDespesa('${item.id}')" class="text-slate-500 hover:text-amber-700 p-1 rounded transition" title="Editar">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+            <button onclick="excluirDespesa('${item.id}')" class="text-slate-500 hover:text-red-600 p-1 rounded transition ml-1" title="Excluir">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('lblExibindoCount').textContent = `Exibindo ${itens.length} registro(s)`;
+      document.getElementById('lblSomaExibida').textContent = `Soma: ${formatarMoeda(somaValores)}`;
+    }
+
+    function atualizarDashboard() {
+      let totalGeral = 0;
+      let totalMesAtual = 0;
+      const catSoma = {};
+
+      const agora = new Date();
+      const anoAtual = agora.getFullYear();
+      const mesAtual = agora.getMonth();
+
+      listaDespesas.forEach(item => {
+        const val = Number(item.valor) || 0;
+        totalGeral += val;
+
+        const c = item.categoria || 'Outros';
+        catSoma[c] = (catSoma[c] || 0) + val;
+
+        if (item.data) {
+          const d = new Date(item.data);
+          if (d.getFullYear() === anoAtual && d.getMonth() === mesAtual) {
+            totalMesAtual += val;
+          }
+        }
+      });
+
+      let maiorCat = 'N/A';
+      let maiorVal = 0;
+      for (const [cat, v] of Object.entries(catSoma)) {
+        if (v > maiorVal) {
+          maiorVal = v;
+          maiorCat = cat;
+        }
+      }
+
+      document.getElementById('dashTotalGeral').textContent = formatarMoeda(totalGeral);
+      document.getElementById('dashTotalQtd').textContent = `${listaDespesas.length} despesas gravadas`;
+      document.getElementById('dashTotalMes').textContent = formatarMoeda(totalMesAtual);
+     
+      const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+      document.getElementById('dashMesNome').textContent = `Competência ${meses[mesAtual]}/${anoAtual}`;
+
+      document.getElementById('dashMaiorCategoria').textContent = maiorCat;
+      document.getElementById('dashMaiorCategoriaValor').textContent = formatarMoeda(maiorVal);
+    }
+
+    // =========================================================================
+    // LÓGICA DE GRÁFICOS & RELATÓRIOS POR CATEGORIA
+    // =========================================================================
+
+    function setFiltroRapido(tipo, recalcular = true) {
+      const dIn = document.getElementById('graficoDataInicio');
+      const dFim = document.getElementById('graficoDataFim');
+      const hoje = new Date();
+
+      if (tipo === 'esteMes') {
+        const primDia = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+        const ultDia = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+        dIn.value = primDia.toISOString().split('T')[0];
+        dFim.value = ultDia.toISOString().split('T')[0];
+      } else if (tipo === 'mesAnterior') {
+        const primDia = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1);
+        const ultDia = new Date(hoje.getFullYear(), hoje.getMonth(), 0);
+        dIn.value = primDia.toISOString().split('T')[0];
+        dFim.value = ultDia.toISOString().split('T')[0];
+      } else if (tipo === 'anoAtual') {
+        const primDia = new Date(hoje.getFullYear(), 0, 1);
+        const ultDia = new Date(hoje.getFullYear(), 11, 31);
+        dIn.value = primDia.toISOString().split('T')[0];
+        dFim.value = ultDia.toISOString().split('T')[0];
+      } else if (tipo === 'tudo') {
+        dIn.value = '';
+        dFim.value = '';
+      }
+
+      if (recalcular) atualizarGraficosERelatorios();
+    }
+
+    function atualizarGraficosERelatorios() {
+      const dtInicioStr = document.getElementById('graficoDataInicio').value;
+      const dtFimStr = document.getElementById('graficoDataFim').value;
+
+      // Filtrar lista por período
+      const itensFiltrados = listaDespesas.filter(item => {
+        if (!item.data) return false;
+        const d = item.data.split('T')[0];
+        if (dtInicioStr && d < dtInicioStr) return false;
+        if (dtFimStr && d > dtFimStr) return false;
+        return true;
+      });
+
+      // 1. Métricas da Tela de Gráficos
+      let totalFiltrado = 0;
+      const catSoma = {};
+      const mesesSoma = {};
+
+      itensFiltrados.forEach(item => {
+        const val = Number(item.valor) || 0;
+        totalFiltrado += val;
+
+        const cat = item.categoria || 'Outros';
+        catSoma[cat] = (catSoma[cat] || 0) + val;
+
+        // Chave YYYY-MM para o gráfico de evolução
+        if (item.data) {
+          const mesChave = item.data.substring(0, 7);
+          mesesSoma[mesChave] = (mesesSoma[mesChave] || 0) + val;
+        }
+      });
+
+      let catLider = 'N/A';
+      let catLiderVal = 0;
+      for (const [c, v] of Object.entries(catSoma)) {
+        if (v > catLiderVal) {
+          catLiderVal = v;
+          catLider = c;
+        }
+      }
+
+      document.getElementById('graficoTotalFiltrado').textContent = formatarMoeda(totalFiltrado);
+      document.getElementById('graficoQtdFiltrado').textContent = `${itensFiltrados.length} compras no período`;
+      document.getElementById('graficoCatLider').textContent = catLider;
+      document.getElementById('graficoCatLiderValor').textContent = formatarMoeda(catLiderVal);
+
+      // 2. Renderizar Gráfico Mensal (Barras)
+      renderizarChartMensal(mesesSoma);
+
+      // 3. Renderizar Gráfico de Categorias (Rosca)
+      renderizarChartCategorias(catSoma);
+
+      // 4. Renderizar Grade de Categorias
+      renderizarGradeCategorias(catSoma, totalFiltrado);
+
+      // 5. Renderizar Tabela de Itens Comprados por Categoria
+      renderizarTabelaItensCategoria(itensFiltrados);
+    }
+
+    // RENDERIZAR GRÁFICO MENSAL
+    function renderizarChartMensal(mesesSoma) {
+      const ctx = document.getElementById('chartEvolucaoMensal').getContext('2d');
+      const labels = Object.keys(mesesSoma).sort();
+      const valores = labels.map(k => mesesSoma[k]);
+
+      // Formatar labels para MM/YYYY
+      const labelsFormatadas = labels.map(l => {
+        const [a, m] = l.split('-');
+        return `${m}/${a}`;
+      });
+
+      if (chartEvolucaoObj) chartEvolucaoObj.destroy();
+
+      chartEvolucaoObj = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labelsFormatadas,
+          datasets: [{
+            label: 'Total gasto (R$)',
+            data: valores,
+            backgroundColor: '#b45309',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: { beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    // RENDERIZAR GRÁFICO ROSCA CATEGORIAS
+    function renderizarChartCategorias(catSoma) {
+      const ctx = document.getElementById('chartCategorias').getContext('2d');
+      const labels = Object.keys(catSoma);
+      const valores = Object.values(catSoma);
+
+      const cores = ['#78350f', '#92400e', '#b45309', '#d97706', '#f59e0b', '#fbbf24', '#fcd34d', '#475569', '#64748b'];
+
+      if (chartCategoriasObj) chartCategoriasObj.destroy();
+
+      chartCategoriasObj = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: valores,
+            backgroundColor: cores.slice(0, labels.length)
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }
+          }
+        }
+      });
+    }
+
+    // RENDERIZAR GRADE DE CATEGORIAS (Cartões abaixo do gráfico)
+    function renderizarGradeCategorias(catSoma, totalGeral) {
+      const container = document.getElementById('gradeCategorias');
+      container.innerHTML = '';
+
+      const categorias = Object.keys(catSoma).sort((a,b) => catSoma[b] - catSoma[a]);
+
+      if (categorias.length === 0) {
+        container.innerHTML = '<p class="text-xs text-slate-400 py-4 text-center">Nenhuma categoria registrada no período.</p>';
+        return;
+      }
+
+      categorias.forEach(cat => {
+        const val = catSoma[cat];
+        const pct = totalGeral > 0 ? ((val / totalGeral) * 100).toFixed(1) : 0;
+        const isSelected = categoriaSelecionadaGrade === cat;
+
+        const div = document.createElement('div');
+        div.onclick = () => selecionarCategoriaGrade(isSelected ? '' : cat);
+        div.className = `p-3 rounded-xl border transition cursor-pointer flex items-center justify-between ${
+          isSelected
+            ? 'bg-amber-100 border-amber-800 text-amber-900 font-semibold shadow-sm'
+            : 'bg-slate-50 border-slate-200 hover:bg-amber-50 text-slate-700'
+        }`;
+
+        div.innerHTML = `
+          <div class="flex items-center space-x-2">
+            <i class="fa-solid ${isSelected ? 'fa-folder-open text-amber-800' : 'fa-folder text-amber-700'} text-sm"></i>
+            <div>
+              <p class="text-xs font-bold leading-tight">${escapeHtml(cat)}</p>
+              <p class="text-[10px] text-slate-400 font-normal">${pct}% do total</p>
+            </div>
+          </div>
+          <span class="text-xs font-bold">${formatarMoeda(val)}</span>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function selecionarCategoriaGrade(cat) {
+      categoriaSelecionadaGrade = cat;
+      atualizarGraficosERelatorios();
+    }
+
+    // RENDERIZAR TABELA DE ITENS COMPRADOS POR CATEGORIA
+    function renderizarTabelaItensCategoria(itensPeriodo) {
+      const tbody = document.getElementById('tabelaItensCategoria');
+      const lblTitulo = document.getElementById('lblTituloItensCategoria');
+      const lblSubtitulo = document.getElementById('lblSubtituloItensCategoria');
+      const btnLimpar = document.getElementById('btnLimparFiltroCat');
+      const lblTotal = document.getElementById('lblTotalItensCategoria');
+
+      tbody.innerHTML = '';
+
+      let itensExibidos = itensPeriodo;
+
+      if (categoriaSelecionadaGrade) {
+        itensExibidos = itensPeriodo.filter(i => i.categoria === categoriaSelecionadaGrade);
+        lblTitulo.innerHTML = `<i class="fa-solid fa-filter text-amber-800"></i> Categoria: ${escapeHtml(categoriaSelecionadaGrade)}`;
+        lblSubtitulo.textContent = `Exibindo somente compras de ${categoriaSelecionadaGrade}`;
+        btnLimpar.classList.remove('hidden');
+      } else {
+        lblTitulo.innerHTML = `<i class="fa-solid fa-cart-shopping text-amber-800"></i> Itens Comprados (Todas as Categorias)`;
+        lblSubtitulo.textContent = `Exibindo compras do período selecionado`;
+        btnLimpar.classList.add('hidden');
+      }
+
+      if (itensExibidos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="py-6 text-center text-slate-400">Nenhum item nesta categoria/período.</td></tr>';
+        lblTotal.textContent = 'Total Categoria: R$ 0,00';
+        return;
+      }
+
+      let somaVal = 0;
+
+      itensExibidos.forEach(item => {
+        const v = Number(item.valor) || 0;
+        somaVal += v;
+
+        let dt = item.data || '-';
+        if (dt.includes('T')) dt = dt.split('T')[0];
+        if (dt.includes('-')) {
+          const [a, m, d] = dt.split('-');
+          dt = `${d}/${m}/${a}`;
+        }
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50 transition';
+        tr.innerHTML = `
+          <td class="py-2 px-2 text-slate-500 whitespace-nowrap">${dt}</td>
+          <td class="py-2 px-2 font-medium text-slate-800">${escapeHtml(item.descricao || '')}</td>
+          <td class="py-2 px-2 text-slate-500">${escapeHtml(item.pagamento || 'Pix')}</td>
+          <td class="py-2 px-2 text-right font-bold text-slate-900">${formatarMoeda(v)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      lblTotal.textContent = `Total Exibido: ${formatarMoeda(somaVal)}`;
+    }
+
+    // UTILITÁRIOS
+    function formatarMoeda(val) {
+      return Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function escapeHtml(texto) {
+      const div = document.createElement('div');
+      div.textContent = texto;
+      return div.innerHTML;
+    }
+
+    function exibirLoading(show) {
+      document.getElementById('loadingState').style.display = show ? 'block' : 'none';
+    }
+
+    function exibirToast(mensagem, tipo = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+     
+      const bgColors = {
+        success: 'bg-emerald-800 text-white',
+        error: 'bg-red-800 text-white',
+        warning: 'bg-amber-600 text-white',
+        info: 'bg-slate-800 text-white'
+      };
+
+      const icons = {
+        success: 'fa-check-circle',
+        error: 'fa-circle-exclamation',
+        warning: 'fa-triangle-exclamation',
+        info: 'fa-info-circle'
+      };
+
+      toast.className = `pointer-events-auto px-4 py-3 rounded-lg shadow-lg text-xs font-medium flex items-center space-x-2 fade-in ${bgColors[tipo] || bgColors.info}`;
+      toast.innerHTML = `<i class="fa-solid ${icons[tipo]}"></i> <span>${mensagem}</span>`;
+
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+  </script>
+</body>
+</html>
+
+ 
